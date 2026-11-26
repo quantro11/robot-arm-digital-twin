@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>6-DOF Görüntü İşlemeli Robot Kol • Dijital İkiz &amp; Wi-Fi CSI</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/static/node_modules/three/build/three.module.js",
+        "three/addons/": "/static/node_modules/three/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- Full-Bleed Ultra-Realistic 3D PBR Viewport -->
+  <div id="viewport"></div>
+
+  <!-- Top Telemetry & Camera Preset Bar -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <div>
+        <div class="brand-title">6-DOF ROBOT KOL • WI-FI CSI LAB</div>
+        <div class="brand-sub">ESP32 + ESP32-CAM OpenCV + RuView CSI + Unreal Engine 5 Bridge</div>
+      </div>
+    </div>
+
+    <div class="status-pills">
+      <div class="pill online" id="pillWs"><span class="dot"></span>30Hz</div>
+      <div class="pill online" id="pillCam"><span class="dot"></span>CAM: SANAL</div>
+      <div class="pill sim" id="pillEsp"><span class="dot"></span>ESP32: SİM</div>
+      <div class="pill sim" id="pillCsi"><span class="dot"></span>CSI: SİM</div>
+      <div class="pill" id="pillUe5"><span class="dot"></span>UE5: 0</div>
+    </div>
+
+    <div class="top-controls">
+      <button class="btn active" data-cam="close">Yakın</button>
+      <button class="btn" data-cam="iso">İzo</button>
+      <button class="btn" data-cam="room">Oda CSI</button>
+      <button class="btn" data-cam="top">Üstten</button>
+      <button class="btn primary" id="btnPause">Duraklat</button>
+      <button class="btn" id="btnResetCubes">Yeni Küp</button>
+    </div>
+  </header>
+
+  <!-- Center Top Floating Mission Indicator -->
+  <div class="mission-banner">
+    <span>FAZ:</span>
+    <span class="mission-phase-tag" id="missionPhase">SCANNING</span>
+    <span>|</span>
+    <span>AYRIŞTIRILAN: <strong id="sortedCount">0</strong></span>
+    <span>|</span>
+    <span>UÇ KONUM: <strong id="tipCoords">0.0, 0.0, 0.0 cm</strong></span>
+  </div>
+
+  <!-- LEFT DOCK: ESP32-CAM OpenCV Feed + Cube Property Inspector -->
+  <aside class="dock dock-left">
+    <section class="card">
+      <div class="card-header">
+        <div class="card-title">ESP32-CAM • Canlı OpenCV</div>
+        <span class="badge" id="camFpsBadge">24.0 FPS</span>
+      </div>
+
+      <div class="camera-frame-wrap">
+        <img id="camFeed" src="/api/camera/mjpeg" alt="ESP32-CAM OpenCV Canlı Akış" />
+      </div>
+
+      <div class="cam-source-row">
+        <button class="btn btn-sm active" data-camsrc="synthetic">Sanal Cam</button>
+        <button class="btn btn-sm" data-camsrc="webcam">Webcam</button>
+        <button class="btn btn-sm" data-camsrc="esp32cam">ESP32-CAM</button>
+      </div>
+      <div id="espCamUrlWrap" style="display:none; gap:5px; margin-top:4px;">
+        <input type="text" id="espCamUrl" class="input-text" value="http://192.168.1.50:81/stream" />
+        <button class="btn primary" id="btnApplyCamUrl">Bağlan</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <div class="card-title">Küp Özellik Analizi</div>
+        <span class="badge" id="cubeConfBadge">--%</span>
+      </div>
+
+      <div class="cube-hero">
+        <div class="cube-swatch" id="cubeSwatch" style="background:#e43a34;"></div>
+        <div class="cube-hero-meta">
+          <div class="cube-hero-title">
+            <span id="cubeTitle">Taranıyor...</span>
+            <span class="badge" id="cubeZoneBadge">--</span>
+          </div>
+          <div class="cube-hero-sub" id="cubeMaterial">OpenCV HSV + Kontur bekleniyor</div>
+        </div>
+      </div>
+
+      <div class="prop-grid">
+        <div class="prop-item">
+          <div class="prop-label">Boyut (G × D × Y)</div>
+          <div class="prop-val" id="cubeDims">-- mm</div>
+        </div>
+        <div class="prop-item">
+          <div class="prop-label">Hacim / Tahm. Ağırlık</div>
+          <div class="prop-val" id="cubeMass">-- g</div>
+        </div>
+        <div class="prop-item">
+          <div class="prop-label">3D Konum (X, Y, Z)</div>
+          <div class="prop-val" id="cubePos">-- cm</div>
+        </div>
+        <div class="prop-item">
+          <div class="prop-label">Dönme Açısı (Yaw)</div>
+          <div class="prop-val" id="cubeYaw">--°</div>
+        </div>
+        <div class="prop-item">
+          <div class="prop-label">Renk (RGB)</div>
+          <div class="prop-val" id="cubeRgb">--</div>
+        </div>
+        <div class="prop-item">
+          <div class="prop-label">Renk (HSV)</div>
+          <div class="prop-val" id="cubeHsv">--</div>
+        </div>
+      </div>
+
+      <div class="cube-list" id="cubeList"></div>
+    </section>
+  </aside>
+
+  <!-- RIGHT DOCK: Wi-Fi CSI / Robot & Electrical / Hardware & UE5 -->
+  <aside class="dock dock-right">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="csi">Wi-Fi CSI</button>
+      <button class="tab-btn" data-tab="robot">Kol &amp; Elektrik</button>
+      <button class="tab-btn" data-tab="bridge">ESP32 &amp; UE5</button>
+    </div>
+
+    <!-- TAB 1: WI-FI CSI ROOM & OPERATOR TRACKER -->
+    <div class="tab-pane active" id="pane-csi">
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">Wi-Fi CSI Ortam &amp; Operatör</div>
+          <span class="badge" id="csiPresenceBadge">96% VARLIK</span>
+        </div>
+
+        <div class="cam-source-row">
+          <button class="btn btn-sm active" data-csimode="simulated">Simüle CSI</button>
+          <button class="btn btn-sm" data-csimode="live_udp">Canlı ESP32-S3 (UDP:5005)</button>
+        </div>
+
+        <div class="prop-grid" style="margin-top:6px;">
+          <div class="prop-item">
+            <div class="prop-label">Operatör Konumu</div>
+            <div class="prop-val" id="csiOpPos">0.35, 1.25 m</div>
+          </div>
+          <div class="prop-item">
+            <div class="prop-label">Durum / Hareket</div>
+            <div class="prop-val" id="csiPosture">OBSERVING</div>
+          </div>
+          <div class="prop-item">
+            <div class="prop-label">Solunum (CSI FFT)</div>
+            <div class="prop-val" id="csiBreath">15.8 BPM</div>
+          </div>
+          <div class="prop-item">
+            <div class="prop-label">Nabız Tahmini</div>
+            <div class="prop-val" id="csiHeart">73 BPM</div>
+          </div>
+        </div>
+
+        <div class="prop-label" style="margin-top:8px;">52-Alt Taşıyıcı OFDM CSI Genlik Spektrumu (2.4 GHz)</div>
+        <canvas id="csiChart" width="310" height="92"></canvas>
+
+        <div class="prop-label" style="margin-top:6px;">Simüle Operatör Davranışı (veya haritaya tıkla!)</div>
+        <div class="cam-source-row" style="margin-top:4px;">
+          <button class="btn btn-sm active" data-csibeh="orbit_observe">Oda Turu</button>
+          <button class="btn btn-sm" data-csibeh="inspect_close">Yaklaş</button>
+          <button class="btn btn-sm" data-csibeh="stationary_breath">Sabit Nefes</button>
+        </div>
+        <canvas id="roomPad" width="310" height="126" title="Operatörü odada hareket ettirmek için tıkla/sürükle"></canvas>
+
+        <div class="node-list" id="csiNodeList"></div>
+      </section>
+    </div>
+
+    <!-- TAB 2: ROBOT KINEMATICS & ELECTRICAL TELEMETRY -->
+    <div class="tab-pane" id="pane-robot">
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">Kontrol &amp; 6-DOF Servo Açıları</div>
+          <span class="badge" id="armModeBadge">OTONOM</span>
+        </div>
+
+        <div class="cam-source-row">
+          <button class="btn btn-sm active" id="btnModeAuto">Otonom Görev</button>
+          <button class="btn btn-sm" id="btnModeManual">Manuel Eklem</button>
+          <button class="btn btn-sm" id="btnGoHome">HOME</button>
+        </div>
+
+        <div id="jointSliders" style="margin-top:8px;"></div>
+
+        <div class="slider-row" style="margin-top:6px;">
+          <div class="slider-head"><span>Görev Hız Çarpanı</span><span id="speedVal">1.0x</span></div>
+          <input type="range" id="speedSlider" min="0.4" max="2.0" step="0.1" value="1.0" />
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">Elektrik &amp; Tork Telemetrisi</div>
+          <span class="badge" id="powerBadge">6.0V UBEC</span>
+        </div>
+
+        <div class="prop-grid">
+          <div class="prop-item">
+            <div class="prop-label">6V UBEC Bara / Sıcaklık</div>
+            <div class="prop-val" id="elecVolt">6.00 V • 27°C</div>
+          </div>
+          <div class="prop-item">
+            <div class="prop-label">Toplam Akım / Güç</div>
+            <div class="prop-val" id="elecAmp">0.85 A • 5.1 W</div>
+          </div>
+          <div class="prop-item">
+            <div class="prop-label">Omuz Torku (J2 DS3218)</div>
+            <div class="prop-val" id="elecTauSh">0.42 N·m (4.3 kg·cm)</div>
+          </div>
+          <div class="prop-item">
+            <div class="prop-label">Kıskaç Açıklığı (J6)</div>
+            <div class="prop-val" id="elecJawGap">60.1 mm</div>
+          </div>
+        </div>
+        <div class="prop-label" style="margin-top:8px;">PCA9685 PWM (µs / 12-bit Tick) &amp; Servo Akımı</div>
+        <div class="node-list" id="servoCurrentBars" style="margin-top:4px;"></div>
+      </section>
+    </div>
+
+    <!-- TAB 3: HARDWARE ESP32 SERIAL + UNREAL ENGINE 5 BRIDGE -->
+    <div class="tab-pane" id="pane-bridge">
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">ESP32 Robot Kol Bağlantısı</div>
+          <span class="badge" id="espStatusBadge">SİMÜLASYON</span>
+        </div>
+
+        <div style="display:flex; gap:6px; margin-bottom:7px;">
+          <select id="serialPortSelect" class="select-box">
+            <option value="">COM Port Seç...</option>
+          </select>
+          <button class="btn primary" id="btnConnectEsp">Bağlan</button>
+        </div>
+        <div class="prop-label" id="espInfoText">Fiziksel ESP32 bağlanmadığında dijital ikiz tam fiziksel kinematikle simüle edilir.</div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">Unreal Engine 5 Canlı Köprü</div>
+          <span class="badge" id="ue5Badge">WS READY</span>
+        </div>
+        <div class="prop-grid">
+          <div class="prop-item" style="grid-column: span 2;">
+            <div class="prop-label">WebSocket Uç Noktası (30Hz JSON)</div>
+            <div class="prop-val" style="font-size:10.5px; color:#67e8f9;">ws://127.0.0.1:8765/ws/twin?client=ue5</div>
+          </div>
+          <div class="prop-item">
+            <div class="prop-label">UE5 Uç Konum (Z-Up cm)</div>
+            <div class="prop-val" id="ue5TipPos">0, 0, 0 cm</div>
+          </div>
+          <div class="prop-item">
+            <div class="prop-label">UE5 Operatör (cm)</div>
+            <div class="prop-val" id="ue5OpPos">0, 0, 0 cm</div>
+          </div>
+        </div>
+        <div class="prop-label" style="margin-top:8px; line-height:1.45;">
+          <code>unreal_bridge/</code> klasöründeki C++ aktörleri ve <code>setup_ue5_scene.py</code> betiği UE5 kurulduğunda bu sunucuya doğrudan bağlanır.
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">Sistem Olay Günlüğü</div>
+          <span class="badge">CANLI</span>
+        </div>
+        <div class="log-box" id="logBox"></div>
+      </section>
+    </div>
+  </aside>
+
+  <!-- Bottom Layer Toggles -->
+  <footer class="bottombar">
+    <button class="toggle-chip on" id="togWaves">Wi-Fi Dalga Alanı</button>
+    <button class="toggle-chip on" id="togLinks">Fresnel CSI Işınları</button>
+    <button class="toggle-chip on" id="togRoom">Oda &amp; Operatör</button>
+    <button class="toggle-chip on" id="togCamCone">Kamera Konisi</button>
+    <button class="toggle-chip" id="togHud">Tam Ekran 3D</button>
+  </footer>
+
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>
