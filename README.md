@@ -1,7 +1,9 @@
 # 6-DOF Görüntü İşlemeli Robot Kol • Canlı Dijital İkiz & Wi-Fi CSI Lab
 
 > **Canlı Demo (Sunucusuz — Okul Bilgisayarında Kurulumsuz Çalışır!):**
-> **https://quantro11.github.io/robot-arm-digital-twin/**
+> - **Cloudflare Workers (HTTPS):** https://robot-arm-digital-twin.farukhilmi-lab.workers.dev/
+> - **GitHub Pages (HTTPS):** https://quantro11.github.io/robot-arm-digital-twin/
+> - **İnternetsiz / USB Tek Dosya Sürümü:** `RobotKol_TekTikla.html` dosyasına doğrudan çift tıkla (0 sunucu, 0 internet!)
 
 Elektrik-Elektronik Mühendisliği projesi için geliştirilmiş; **sunucu açmadan doğrudan tarayıcıda çalışan** sinematik **GTAO PBR + Gerçek Zemin Yansımalı 3D Dijital İkiz**, **Gerçek Zamanlı Tarayıcı İçi Görüntü İşleme (3D OV2640 Lens / Webcam / ESP32-CAM)**, **IEEE 802.11n Wi-Fi CSI Ortam & Operatör Takibi (`ruvnet/RuView` & `espressif/esp-csi` uyumlu)** ve **Web Serial API ile Doğrudan USB ESP32 Kontrol** platformu.
 
