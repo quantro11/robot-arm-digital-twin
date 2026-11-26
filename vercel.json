@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "vite",
-  "installCommand": "cd live_app && npm install",
-  "buildCommand": "cd live_app && npm run build",
+  "framework": null,
+  "installCommand": "npm --prefix live_app install --no-audit --no-fund",
+  "buildCommand": "npm --prefix live_app run build",
   "outputDirectory": "live_app/dist",
   "headers": [
     {
