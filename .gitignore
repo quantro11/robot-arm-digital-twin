@@ -2,8 +2,6 @@
 __pycache__/
 *.pyc
 node_modules/
-live_app/dist/
 .DS_Store
 Thumbs.db
-
 live_app/package-lock.json
