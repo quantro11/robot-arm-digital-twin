@@ -1,9 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "npm --prefix live_app install --no-audit --no-fund",
-  "buildCommand": "npm --prefix live_app run build",
-  "outputDirectory": "live_app/dist",
+  "installCommand": "echo skip-install",
+  "buildCommand": "echo skip-build",
+  "outputDirectory": "public",
   "headers": [
     {
       "source": "/(.*)",
